@@ -19,25 +19,35 @@ import os
 from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from scipy import integrate
+from sklearn.externals import joblib
+
 
 from activity_data import parseTraces
 
 vecs = []
 labels = []
 
+# ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', 'p10.1_Male_20-29_170-179cm_Hand_held.dat'))
+# plt.plot(ats, a, '.-')
+# plt.show()
+
 def extract_feature(filename, startWalking, endWalking):
 	ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', filename))
+
 	windowSize = 200
 	vecs = []
 	labels = []
 
 	for i in range(0, len(a) - windowSize, windowSize / 2):
 		window = a[i:i+windowSize]
-		vecs.append([np.median(window), np.mean(window), np.min(window), np.max(window)])
+		vecs.append([np.median(window), np.mean(window), np.min(window), np.max(window), np.std(window)])
+		# integrate.simps(window, ats[i:i+windowSize])
 		if i + windowSize < startWalking or i > endWalking:
 			labels.append(0)
 		else:
 			labels.append(1)
+	print(vecs)
 	return vecs, labels
 
 groundtruthWD = []
@@ -71,12 +81,15 @@ for filename in os.listdir("activity_data/data"):
 # print(vecs)
 
 X_train, X_test, y_train, y_test = train_test_split(vecs, labels, test_size=0.2, random_state=42)
+filenameModelSave = 'model_svm.sav'
 
 def predict_svm(x,y,x_test,y_test):
     linear_svc = svm.SVC(kernel='rbf')
     linear_svc.fit(x, y)
     result = linear_svc.predict(x_test)
-    print(result)
+    joblib.dump(linear_svc, filenameModelSave)
     print ( accuracy_score(y_test, result))
 
 predict_svm(X_train, y_train,X_test,y_test)
+
+

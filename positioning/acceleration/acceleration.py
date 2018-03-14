@@ -28,9 +28,11 @@ from activity_data import parseTraces
 vecs = []
 labels = []
 
-# ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', 'p10.1_Male_20-29_170-179cm_Hand_held.dat'))
-# plt.plot(ats, a, '.-')
-# plt.show()
+ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', 'p1.1_Female_20-29_170-179cm_Hand_held.out'))
+plt.plot(ats, a, '.-')
+plt.xlabel('timestamp(s)')
+plt.ylabel('acceleration(m/s^2)')
+plt.show()
 
 def extract_feature(filename, startWalking, endWalking):
 	ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', filename))
@@ -65,14 +67,14 @@ with open(os.path.join('activity_data', 'groundtruth_WD.txt'), 'r') as f:
 
 # print(groundtruthWD)
 
-for filename in os.listdir("activity_data/data"):
-	if filename.rpartition('.')[2]=='dat' or filename.rpartition('.')[2]=='out':
-		a = [x for x in groundtruthWD if x[0] != '' and filename.find(x[0]) != -1 and filename.find(x[1]) != -1]
-		if len(a) > 0 and len(a[0]) > 3:
-			[[_, _, startWalking, endWalking]] = a
-        	vec, label = extract_feature(filename, int(startWalking), int(endWalking))
-        	vecs.extend(vec)
-        	labels.extend(label)
+# for filename in os.listdir("activity_data/data"):
+# 	if filename.rpartition('.')[2]=='dat' or filename.rpartition('.')[2]=='out':
+# 		a = [x for x in groundtruthWD if x[0] != '' and filename.find(x[0]) != -1 and filename.find(x[1]) != -1]
+# 		if len(a) > 0 and len(a[0]) > 3:
+# 			[[_, _, startWalking, endWalking]] = a
+#         	vec, label = extract_feature(filename, int(startWalking), int(endWalking))
+#         	vecs.extend(vec)
+#         	labels.extend(label)
 
 # print(len(vecs))
 # print(len(labels))
@@ -90,6 +92,6 @@ def predict_svm(x,y,x_test,y_test):
     joblib.dump(linear_svc, filenameModelSave)
     print ( accuracy_score(y_test, result))
 
-predict_svm(X_train, y_train,X_test,y_test)
+# predict_svm(X_train, y_train,X_test,y_test)
 
 

@@ -37,19 +37,19 @@ plt.show()
 def extract_feature(filename, startWalking, endWalking):
 	ats, a = parseTraces.getAccMagn(os.path.join('activity_data/data', filename))
 
-	windowSize = 200
+	windowSize = 190
 	vecs = []
 	labels = []
 
 	for i in range(0, len(a) - windowSize, windowSize / 2):
 		window = a[i:i+windowSize]
-		vecs.append([np.median(window), np.mean(window), np.min(window), np.max(window), np.std(window)])
+		vecs.append([np.std(window)])
 		# integrate.simps(window, ats[i:i+windowSize])
 		if i + windowSize < startWalking or i > endWalking:
 			labels.append(0)
 		else:
 			labels.append(1)
-	print(vecs)
+	# print(vecs)
 	return vecs, labels
 
 groundtruthWD = []

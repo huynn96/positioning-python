@@ -4,7 +4,8 @@ import time
 import MySQLdb
 import json
 import math
-from scipy import integrate
+from scipy import integrate, constants
+from scipy.signal import butter, lfilter
 import numpy as np
 from sklearn.externals import joblib
 from flask import jsonify
@@ -28,32 +29,107 @@ def create_app(config_name):
     loaded_model = joblib.load('positioning/acceleration/model_svm.sav')
 
     @app.route('/cal-do', methods=['POST'])
-    def hello_world():
-        vecs = extract_feture(json.loads(request.data))
+    def calDirOff():
+        a, ats, d, dts = parseData(json.loads(request.data))
+        vecs = extract_feture(a, ats)
         result = loaded_model.predict(vecs)
-        print(result)
-        
-        return pd.Series(result).to_json(orient='values')
+        distanceCount = 0
+        directionCal = 0
+        if 1 in result:
+            peaks = stepCounting(a, ats)
+            distanceCount = distance(peaks, ats)
+            directionCal = direction(d, dts, peaks, ats)
+        return pd.Series([distanceCount, directionCal]).to_json(orient='values')
 
-    def extract_feture(accelerationData):
+    def direction(d, dts, peaks, ats):
+        result = d[0]
+        a = 3/3.08
+        if len(peaks) > 2:
+            a = 1 / ((ats[peaks[2]] - ats[peaks[1]]) * 3.08)
+
+        for direction in d:
+            result = (1-a) * direction + a * result
+        return result
+
+    def stepCounting(a, ats): 
+        g = constants.value(u'standard acceleration of gravity')
+        a = [x- g for x in a]
+        accFiltered = butter_bandpass_filter(a, 1, 3, 50, order=6)
+
+        windowSize = 16
+        peaks = []
+        for i in range(0, len(accFiltered) - 2, 1):
+            window = accFiltered[i:i+windowSize]
+            median = len(window)//2
+            if window[median] == np.max(window) and np.std(window) > 0.1:
+                if len(peaks) == 0:
+                    # print(i + median)
+                    # print(np.std(window))
+                    peaks.append(i + median)
+                else:
+                    if ats[i + median] - ats[peaks[len(peaks) - 1]] >= 0.33:
+                        # print(i + median)
+                        # print(np.std(window))
+                        peaks.append(i + median)   
+        # print(peaks)
+
+        plt.plot(ats, a, '.-')
+        plt.plot(ats, accFiltered, linestyle='dashed', color='red')
+        plt.xlabel('time (s)')
+        plt.ylabel('acceleration (m/s^2)')
+        # plt.show()
+        return peaks
+
+    def stepLength(peak1, peak2, ats):
+        a = -0.07
+        b = 0.46
+        frequence = 1 / (ats[peak2] - ats[peak1])
+        return a + b * frequence
+
+    def distance(peaks, ats):
+        result = 0
+        for i in range(1, len(peaks) - 1, 1):
+            result += stepLength(peaks[i - 1], peaks[i], ats)
+        return result
+
+    def parseData(requestData):
         a = []
         ats = []
-        for row in accelerationData:
+        d = []
+        dts = []
+        for row in requestData['accelerations']:
             a.append(math.sqrt(row['x'] * row['x'] + row['y'] * row['y'] + row['z'] * row['z']))
             ats.append(row['createdAt'])
-
-        windowSize = 200
-        vecs = []
-
+        for row in requestData['directions']:
+            d.append(row['direction'])
+            dts.append(row['createdAt'])
         ats =  [x/1000000000. for x in ats]
         ats = [x - ats[0] for x in ats]
-        print(ats)
+        dts =  [x/1000000000. for x in dts]
+        dts = [x - ats[0] for x in dts]
+        return a, ats, d, dts
+
+    def extract_feture(a, ats):
+        windowSize = 45
+        vecs = []
+        # print(len(a))
         for i in range(0, len(a) - windowSize, windowSize / 2):
             window = a[i:i+windowSize]
-            # plt.plot(ats[i:i+windowSize], window, '.-')
-            vecs.append([np.median(window), np.mean(window), np.min(window), np.max(window), np.std(window)])
-            print(integrate.simps(window, ats[i:i+windowSize]))
-            # plt.show()
+            vecs.append([np.std(window)])
+            # print(integrate.simps([1,1,1,1], [1, 1.5, 2, 2.5]))
         return vecs
+
+    def butter_bandpass(lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return b, a
+
+
+    def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+        b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+        y = lfilter(b, a, data)
+        return y
 
     return app

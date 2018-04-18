@@ -30,16 +30,19 @@ def create_app(config_name):
 
     @app.route('/cal-do', methods=['POST'])
     def calDirOff():
-        a, ats, d, dts = parseData(json.loads(request.data))
+        a, ats, d, dts, stepParamsA, stepParamsB = parseData(json.loads(request.data))
         vecs = extract_feture(a, ats)
         result = loaded_model.predict(vecs)
         distanceCount = 0
         directionCal = 0
+        peaks = []
         if 1 in result:
             peaks = stepCounting(a, ats)
-            distanceCount = distance(peaks, ats)
+            distanceCount = distance(peaks, ats, stepParamsA, stepParamsB)
             directionCal = direction(d, dts, peaks, ats)
-        return pd.Series([distanceCount, directionCal]).to_json(orient='values')
+        steps = 0 if len(peaks) == 0 else len(peaks) - 1;
+        print(steps)
+        return pd.Series([steps, distanceCount, directionCal]).to_json(orient='values')
 
     def direction(d, dts, peaks, ats):
         result = d[0]
@@ -80,16 +83,14 @@ def create_app(config_name):
         # plt.show()
         return peaks
 
-    def stepLength(peak1, peak2, ats):
-        a = -0.07
-        b = 0.46
+    def stepLength(peak1, peak2, ats, stepParamsA, stepParamsB):
         frequence = 1 / (ats[peak2] - ats[peak1])
-        return a + b * frequence
+        return stepParamsA + stepParamsB * frequence
 
-    def distance(peaks, ats):
+    def distance(peaks, ats, stepParamsA, stepParamsB):
         result = 0
         for i in range(1, len(peaks) - 1, 1):
-            result += stepLength(peaks[i - 1], peaks[i], ats)
+            result += stepLength(peaks[i - 1], peaks[i], ats, stepParamsA, stepParamsB)
         return result
 
     def parseData(requestData):
@@ -107,7 +108,7 @@ def create_app(config_name):
         ats = [x - ats[0] for x in ats]
         dts =  [x/1000000000. for x in dts]
         dts = [x - ats[0] for x in dts]
-        return a, ats, d, dts
+        return a, ats, d, dts, requestData['stepParamsA'], requestData['stepParamsB']
 
     def extract_feture(a, ats):
         windowSize = 45

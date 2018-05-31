@@ -1,6 +1,19 @@
 # positioning system python server
 
-1. export FLASK_CONFIG=development
-2. export FLASK_APP=app.py
-3. export FLASK_DEBUG=true
-4. flask run
+# positioning-server
+## Requirements
+* Python 2.7
+* pip
+## Common setup
+
+Clone the repo and install the dependencies.
+
+```bash
+pip install requirements.txt
+cd positioning-python
+source bin/active
+export FLASK_CONFIG=development
+export FLASK_APP=app.py
+export FLASK_DEBUG=true
+flask run
+```

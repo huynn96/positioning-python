@@ -1,5 +1,3 @@
-# positioning system python server
-
 # positioning-server
 ## Requirements
 * Python 2.7
